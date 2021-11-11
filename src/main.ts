@@ -3,7 +3,7 @@ import { Viewer } from './viewer'
 const params = new URLSearchParams(window.location.search)
 const url = params.has('model')
   ? params.get('model')
-  : 'https://vim.azureedge.net/samples/residence.vim'
+  : './models/rac_advanced_sample_project.ifcifc'
 
 const viewer = new Viewer({
   url: url,

@@ -81,23 +81,29 @@ export class Viewer {
       | THREE.Object3D
       | THREE.BufferGeometry
   ) {
-    if (result instanceof VimScene) {
+    if (result instanceof VimScene) 
+    {
       this.onVimLoaded(result)
-    } else if (result instanceof THREE.Scene) {
+    } 
+    else if (result instanceof THREE.Scene) 
+    {
       result.traverse((obj) => {
         if (obj instanceof THREE.Mesh) this.render.addToModel([obj])
       })
-    } else if (result instanceof THREE.BufferGeometry) {
+    } 
+    else if (result instanceof THREE.BufferGeometry) 
+    {
       result.computeVertexNormals()
       this.render.addToModel([new THREE.Mesh(result)])
-    } else if (
-      result instanceof THREE.Group ||
-      result instanceof THREE.Object3D
-    ) {
-      this.render.addToModel([result])
+    } 
+    else if (result instanceof THREE.Group || result instanceof THREE.Object3D) 
+    {
+      //this.render.addToModel([result])
+      this.onIfcLoaded(result);
     }
 
-    if (!this.render.boundingSphere) {
+    if (!this.render.boundingSphere) 
+    {
       this.render.computeBoundingSphere(this.getViewMatrix())
     }
 
@@ -122,6 +128,20 @@ export class Viewer {
     this.render.render()
     console.timeEnd('FirstRender')
   }
+
+  onIfcLoaded (model: IFCModel) {
+    this.render.scene.add(model);
+    console.log('Adding environement to scene')
+    this.render.addToScene(this.environment.getElements())
+
+    this.render.updateModel(this.getViewMatrix())
+
+    console.log('Everything ready')
+    console.time('FirstRender')
+    this.render.render()
+    console.timeEnd('FirstRender')
+  }
+
 
   // Calls render, and asks the framework to prepare the next frame
   animate () {

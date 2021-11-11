@@ -14,6 +14,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader'
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader'
+import { IFCLoader } from 'three/examples/jsm/loaders/IFCLoader'
 import { VimScene } from './vim'
 
 // Material
@@ -91,6 +92,13 @@ export const loadAny = function (
     }
     case 'vim': {
       new VIMLoader(defaultMaterial).load(fileName, onFileLoaded)
+      break
+    }
+    case 'ifc': {
+      var loader = new IFCLoader();
+      // temp
+      loader.ifcManager.setWasmPath("./models/");
+      loader.load(fileName, onFileLoaded);
       break
     }
     default:
