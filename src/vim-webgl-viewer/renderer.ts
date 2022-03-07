@@ -7,8 +7,8 @@ import { Scene } from '../vim-loader/scene'
 import { ViewerSettings } from './viewerSettings'
 
 /**
- * Manages how vim objects are added and removed from the THREE.Scene to be rendered
- */
+* Manages how vim objects are added and removed from the THREE.Scene to be rendered
+*/
 export class Renderer {
   renderer: THREE.WebGLRenderer
   canvas: HTMLCanvasElement
@@ -17,8 +17,12 @@ export class Renderer {
   // state
   scene: THREE.Scene
   private _boundingBox: THREE.Box3
+  private _unregisterResize: Function
+  private _ownedCanvas: boolean
 
-  constructor (canvas: HTMLCanvasElement, settings: ViewerSettings) {
+  constructor (settings: ViewerSettings) {
+    const [canvas, owned] = Renderer.getOrCreateCanvas()
+    this._ownedCanvas = owned
     this.renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: true,
@@ -28,6 +32,7 @@ export class Renderer {
       powerPreference: 'high-performance',
       logarithmicDepthBuffer: true
     })
+
     this.canvas = this.renderer.domElement
     this.camera = new THREE.PerspectiveCamera()
     this.renderer.setPixelRatio(window.devicePixelRatio)
@@ -38,32 +43,61 @@ export class Renderer {
     this.setOnResize(this.fitToCanvas, settings.getCanvasResizeDelay())
   }
 
+  dispose () {
+    this.clear()
+
+    this._unregisterResize()
+    this._unregisterResize = undefined
+
+    this.renderer.clear()
+    this.renderer.forceContextLoss()
+    this.renderer.dispose()
+    this.renderer = undefined
+
+    if (this._ownedCanvas) this.canvas.remove()
+  }
+
   /**
-   * Returns the bounding sphere encompasing all rendererd objects.
-   * @param target sphere in which to copy result, a new instance is created if undefined.
-   */
+  * Either returns html canvas at provided Id or creates a canvas at root level
+  */
+  private static getOrCreateCanvas (canvasId?: string) : [HTMLCanvasElement, boolean] {
+    let canvas = canvasId
+      ? (document.getElementById(canvasId) as HTMLCanvasElement)
+      : undefined
+
+    if (canvas) return [canvas, false]
+
+    canvas = document.createElement('canvas')
+    document.body.appendChild(canvas)
+    return [canvas, true]
+  }
+
+  /**
+  * Returns the bounding sphere encompasing all rendererd objects.
+  * @param target sphere in which to copy result, a new instance is created if undefined.
+  */
   getBoundingSphere (target: THREE.Sphere = new THREE.Sphere()) {
     return this._boundingBox?.getBoundingSphere(target)
   }
 
   /**
-   * Returns the bounding box encompasing all rendererd objects.
-   * @param target box in which to copy result, a new instance is created if undefined.
-   */
+  * Returns the bounding box encompasing all rendererd objects.
+  * @param target box in which to copy result, a new instance is created if undefined.
+  */
   getBoundingBox (target: THREE.Box3 = new THREE.Box3()) {
     return target.copy(this._boundingBox)
   }
 
   /**
-   * Render what is in camera.
-   */
+  * Render what is in camera.
+  */
   render () {
     this.renderer.render(this.scene, this.camera)
   }
 
   /**
-   * Returns the pixel size of the canvas.
-   */
+  * Returns the pixel size of the canvas.
+  */
   getContainerSize (): [width: number, height: number] {
     return [
       this.canvas.parentElement.clientWidth,
@@ -72,8 +106,8 @@ export class Renderer {
   }
 
   /**
-   * Add object to be rendered
-   */
+  * Add object to be rendered
+  */
   add (target: Scene | THREE.Object3D) {
     if (target instanceof Scene) {
       this.addScene(target)
@@ -83,8 +117,8 @@ export class Renderer {
   }
 
   /**
-   * Remove object from rendering
-   */
+  * Remove object from rendering
+  */
   remove (target: Scene | THREE.Object3D) {
     if (target instanceof Scene) {
       for (let i = 0; i < target.meshes.length; i++) {
@@ -96,8 +130,8 @@ export class Renderer {
   }
 
   /**
-   * Removes all rendered objects
-   */
+  * Removes all rendered objects
+  */
   clear () {
     this.scene.clear()
     this._boundingBox = undefined
@@ -114,14 +148,14 @@ export class Renderer {
   }
 
   /**
-   * Set a callback for canvas resize with debouncing
-   * https://stackoverflow.com/questions/5825447/javascript-event-for-canvas-resize/30688151
-   * @param callback code to be called
-   * @param timeout time after the last resize before code will be called
-   */
+  * Set a callback for canvas resize with debouncing
+  * https://stackoverflow.com/questions/5825447/javascript-event-for-canvas-resize/30688151
+  * @param callback code to be called
+  * @param timeout time after the last resize before code will be called
+  */
   private setOnResize (callback, timeout) {
     let timerId
-    window.addEventListener('resize', function () {
+    const onResize = function () {
       if (timerId !== undefined) {
         clearTimeout(timerId)
         timerId = undefined
@@ -130,7 +164,9 @@ export class Renderer {
         timerId = undefined
         callback()
       }, timeout)
-    })
+    }
+    window.addEventListener('resize', onResize)
+    this._unregisterResize = () => window.removeEventListener('resize', onResize)
   }
 
   private fitToCanvas = () => {

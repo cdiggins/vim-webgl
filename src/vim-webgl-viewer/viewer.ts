@@ -75,8 +75,7 @@ export class Viewer {
     this._loader = new Loader()
     this.settings = new ViewerSettings(options)
 
-    const canvas = Viewer.getOrCreateCanvas(this.settings.getCanvasId())
-    this.renderer = new Renderer(canvas, this.settings)
+    this.renderer = new Renderer(this.settings)
     this._camera = new Camera(this.renderer, this.settings)
 
     this._environment = new Environment(this.settings)
@@ -93,22 +92,6 @@ export class Viewer {
 
     // Start Loop
     this.animate()
-  }
-
-  /**
-   * Either returns html canvas at provided Id or creates a canvas at root level
-   */
-  private static getOrCreateCanvas (canvasId?: string) {
-    let canvas = canvasId
-      ? (document.getElementById(canvasId) as HTMLCanvasElement)
-      : undefined
-
-    if (!canvas) {
-      canvas = document.createElement('canvas')
-      document.body.appendChild(canvas)
-    }
-
-    return canvas
   }
 
   // Calls render, and asks the framework to prepare the next frame
