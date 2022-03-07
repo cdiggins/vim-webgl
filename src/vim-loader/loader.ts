@@ -10,24 +10,32 @@ import { Scene } from './scene'
 import { Transparency } from './geometry'
 
 /**
- * Loader for the Vim File format.
- * See https://github.com/vimaec/vim
- */
+* Loader for the Vim File format.
+* See https://github.com/vimaec/vim
+*/
 export class Loader {
   private _loader: THREE.FileLoader
   private _loaded: Set<string> = new Set<string>()
+  // Idealy we would cancel the load request, but three doesn't currently support it.
+  private _disposed: boolean
   constructor () {
     this._loader = new THREE.FileLoader()
     THREE.Cache.enabled = true
   }
 
+  dispose () {
+    THREE.Cache.clear()
+    this._loaded.clear()
+    this._disposed = true
+  }
+
   /**
-   * Load a vim from a remote or local url
-   * @param transparency defines how and if to render objects according to transparency.
-   * @param onLoad Callback on success, returns a Vim instance.
-   * @param onProgress on progress callback with download info or 'processing'.
-   * @param onError error callback with error info.
-   */
+  * Load a vim from a remote or local url
+  * @param transparency defines how and if to render objects according to transparency.
+  * @param onLoad Callback on success, returns a Vim instance.
+  * @param onProgress on progress callback with download info or 'processing'.
+  * @param onError error callback with error info.
+  */
   loadFromUrl (
     url: string,
     transparency: Transparency.Mode = 'all',
@@ -43,6 +51,7 @@ export class Loader {
     this._loader.load(
       url,
       (data: string | ArrayBuffer) => {
+        if (this._disposed) return
         if (!data) {
           onError?.(new ErrorEvent('Failed to obtain file at ' + url))
           return
@@ -54,24 +63,28 @@ export class Loader {
         onProgress?.('processing')
         // slight hack to avoid multiple load call to share the same data.
         if (this._loaded.has(url)) data = data.slice(0)
-        const vim = Document.createFromArrayBuffer(data)
-        const scene = this.loadFromVim(vim, transparency)
-        onLoad?.(scene)
+        const document = Document.createFromArrayBuffer(data)
+        const vim = this.loadFromVim(document, transparency)
+        onLoad?.(vim)
       },
-      onProgress,
+      (progress) => {
+        if (this._disposed) return
+        onProgress(progress)
+      },
       (error) => {
+        if (this._disposed) return
         onError?.(error)
       }
     )
   }
 
   /**
-   * Loads a vim from an array buffer of a vim file.
-   * Useful if you download the file using a custom http request.
-   * @param transparency defines how and if to render objects according to transparency.
-   * @param instances defines which g3d instances to load. All loaded if none provided.
-   * @returns a vim instance
-   */
+  * Loads a vim from an array buffer of a vim file.
+  * Useful if you download the file using a custom http request.
+  * @param transparency defines how and if to render objects according to transparency.
+  * @param instances defines which g3d instances to load. All loaded if none provided.
+  * @returns a vim instance
+  */
   loadFromArrayBuffer (
     data: ArrayBuffer,
     transparency: Transparency.Mode,
@@ -82,11 +95,11 @@ export class Loader {
   }
 
   /**
-   * Reloads a new vim from an existing vim
-   * @param transparency defines how and if to render objects according to transparency.
-   * @param instances defines which g3d instances to load. All loaded if none provided.
-   * @returns a vim instance
-   */
+  * Reloads a new vim from an existing vim
+  * @param transparency defines how and if to render objects according to transparency.
+  * @param instances defines which g3d instances to load. All loaded if none provided.
+  * @returns a vim instance
+  */
   loadFromVim (
     vim: Document,
     transparency: Transparency.Mode,
