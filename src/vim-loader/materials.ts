@@ -6,8 +6,8 @@ import * as THREE from 'three'
 
 export namespace Materials {
   /**
-   * Defines the materials to be used by the vim loader and allows for material injection.
-   */
+  * Defines the materials to be used by the vim loader and allows for material injection.
+  */
   export class Library {
     opaque: THREE.Material
     transparent: THREE.Material | undefined
@@ -22,12 +22,22 @@ export namespace Materials {
       this.transparent = transparent ?? createTransparent()
       this.wireframe = wireframe ?? createWireframe()
     }
+
+    dispose () {
+      this.opaque.dispose()
+      this.transparent.dispose()
+      this.wireframe.dispose()
+
+      this.opaque = undefined
+      this.transparent = undefined
+      this.wireframe = undefined
+    }
   }
 
   /**
-   * Creates a non-custom instance of phong material as used by the vim loader
-   * @returns a THREE.MeshPhongMaterial
-   */
+  * Creates a non-custom instance of phong material as used by the vim loader
+  * @returns a THREE.MeshPhongMaterial
+  */
   export function createBase () {
     return new THREE.MeshPhongMaterial({
       color: 0x999999,
@@ -39,9 +49,9 @@ export namespace Materials {
   }
 
   /**
-   * Creates a new instance of the default opaque material used by the vim-loader
-   * @returns a THREE.MeshPhongMaterial
-   */
+  * Creates a new instance of the default opaque material used by the vim-loader
+  * @returns a THREE.MeshPhongMaterial
+  */
   export function createOpaque () {
     const mat = createBase()
     patchMaterial(mat)
@@ -49,9 +59,9 @@ export namespace Materials {
   }
 
   /**
-   * Creates a new instance of the default loader transparent material
-   * @returns a THREE.MeshPhongMaterial
-   */
+  * Creates a new instance of the default loader transparent material
+  * @returns a THREE.MeshPhongMaterial
+  */
   export function createTransparent () {
     const mat = createBase()
     mat.transparent = true
@@ -60,9 +70,9 @@ export namespace Materials {
   }
 
   /**
-   * Adds feature to default three material to support color change.
-   * Developed and tested for Phong material, but might work for other materials.
-   */
+  * Adds feature to default three material to support color change.
+  * Developed and tested for Phong material, but might work for other materials.
+  */
   export function patchMaterial (material: THREE.Material) {
     material.defines = { USE_UV: true }
     material.onBeforeCompile = (shader) => {
@@ -72,11 +82,11 @@ export namespace Materials {
   }
 
   /**
-   * Patches phong shader to be able to control when lighting should be applied to resulting color.
-   * Instanced meshes ignore light when InstanceColor is defined
-   * Instanced meshes ignore vertex color when instance attribute useVertexColor is 0
-   * Regular meshes ignore light in favor of vertex color when uv.y = 0
-   */
+  * Patches phong shader to be able to control when lighting should be applied to resulting color.
+  * Instanced meshes ignore light when InstanceColor is defined
+  * Instanced meshes ignore vertex color when instance attribute useVertexColor is 0
+  * Regular meshes ignore light in favor of vertex color when uv.y = 0
+  */
   export function patchShader (shader: THREE.Shader) {
     shader.vertexShader = shader.vertexShader
       // Add useVertexColor when instanced colors are used.
@@ -128,9 +138,9 @@ export namespace Materials {
   }
 
   /**
-   * Creates a new instance of the default wireframe material
-   * @returns a THREE.LineBasicMaterial
-   */
+  * Creates a new instance of the default wireframe material
+  * @returns a THREE.LineBasicMaterial
+  */
   export function createWireframe (): THREE.Material {
     const material = new THREE.LineBasicMaterial({
       depthTest: false,
@@ -140,7 +150,11 @@ export namespace Materials {
     })
     return material
   }
-
   let materials: Library
   export const getDefaultLibrary = () => materials ?? new Library()
+
+  export function dispose () {
+    materials.dispose()
+    materials = undefined
+  }
 }

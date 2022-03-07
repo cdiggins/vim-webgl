@@ -9,9 +9,9 @@ import { Materials } from './materials'
 
 export namespace Mesh {
   /**
-   * Builds meshes from the g3d and BufferGeometry
-   * Allows to reuse the same material for all new built meshes
-   */
+  * Builds meshes from the g3d and BufferGeometry
+  * Allows to reuse the same material for all new built meshes
+  */
   export class Builder {
     materials: Materials.Library
 
@@ -20,12 +20,12 @@ export namespace Mesh {
     }
 
     /**
-     * Creates Instanced Meshes from the g3d data
-     * @param transparency Specify wheter color is RBG or RGBA and whether material is opaque or transparent
-     * @param instances instance indices from the g3d for which meshes will be created.
-     *  If undefined, all multireferenced meshes will be created.
-     * @returns an array of THREE.InstancedMesh
-     */
+    * Creates Instanced Meshes from the g3d data
+    * @param transparency Specify wheter color is RBG or RGBA and whether material is opaque or transparent
+    * @param instances instance indices from the g3d for which meshes will be created.
+    *  If undefined, all multireferenced meshes will be created.
+    * @returns an array of THREE.InstancedMesh
+    */
     createInstancedMeshes (
       g3d: G3d,
       transparency: Transparency.Mode,
@@ -61,12 +61,12 @@ export namespace Mesh {
     }
 
     /**
-     * Creates a InstancedMesh from g3d data and given instance indices
-     * @param geometry Geometry to use in the mesh
-     * @param instances Instance indices for which matrices will be applied to the mesh
-     * @param useAlpha Specify whether to use RGB or RGBA
-     * @returns a THREE.InstancedMesh
-     */
+    * Creates a InstancedMesh from g3d data and given instance indices
+    * @param geometry Geometry to use in the mesh
+    * @param instances Instance indices for which matrices will be applied to the mesh
+    * @param useAlpha Specify whether to use RGB or RGBA
+    * @returns a THREE.InstancedMesh
+    */
     createInstancedMesh (
       geometry: THREE.BufferGeometry,
       g3d: G3d,
@@ -92,11 +92,11 @@ export namespace Mesh {
     }
 
     /**
-     * Create a merged mesh from g3d instance indices
-     * @param transparency Specify wheter color is RBG or RGBA and whether material is opaque or transparent
-     * @param instances g3d instance indices to be included in the merged mesh. All mergeable meshes if undefined.
-     * @returns a THREE.Mesh
-     */
+    * Create a merged mesh from g3d instance indices
+    * @param transparency Specify wheter color is RBG or RGBA and whether material is opaque or transparent
+    * @param instances g3d instance indices to be included in the merged mesh. All mergeable meshes if undefined.
+    * @returns a THREE.Mesh
+    */
     createMergedMesh (
       g3d: G3d,
       transparency: Transparency.Mode,
@@ -120,10 +120,10 @@ export namespace Mesh {
     }
 
     /**
-     * Create a wireframe mesh from g3d instance indices
-     * @param instances g3d instance indices to be included in the merged mesh. All mergeable meshes if undefined.
-     * @returns a THREE.Mesh
-     */
+    * Create a wireframe mesh from g3d instance indices
+    * @param instances g3d instance indices to be included in the merged mesh. All mergeable meshes if undefined.
+    * @returns a THREE.Mesh
+    */
     createWireframe (g3d: G3d, instances: number[]) {
       const geometry = Geometry.createGeometryFromInstances(g3d, instances)
       const wireframe = new THREE.WireframeGeometry(geometry)
@@ -134,5 +134,9 @@ export namespace Mesh {
   let defaultBuilder: Builder
   export function getDefaultBuilder () {
     return defaultBuilder ?? (defaultBuilder = new Builder())
+  }
+
+  export function dispose () {
+    defaultBuilder = undefined
   }
 }
