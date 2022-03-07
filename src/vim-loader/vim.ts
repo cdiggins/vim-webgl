@@ -28,6 +28,13 @@ export class Vim {
     this._elementIdToElement = this.mapElementIdToElement()
   }
 
+  dispose () {
+    this.scene.dispose()
+    this._elementIdToElement.clear()
+    this._elementIdToElement.clear()
+    this._elementToObject.clear()
+  }
+
   filter (instances?: number[]) {
     this.scene.dispose()
     this.scene = Scene.createFromG3d(this.document.g3d, this.settings.getTransparency(), instances)
