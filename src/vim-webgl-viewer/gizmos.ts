@@ -7,18 +7,17 @@ import { Renderer } from './renderer'
 import { ViewerSettings } from './viewerSettings'
 
 /**
- * Manages the camera target gizmo
- */
+* Manages the camera target gizmo
+*/
 export class CameraGizmo {
   // Dependencies
   private _renderer: Renderer
 
   // Settings
   private _scale: number
-  private _fov: number
 
   // Resources
-  private _box: THREE.BufferGeometry
+  private _sphere: THREE.BufferGeometry
   private _wireframe: THREE.BufferGeometry
   private _material: THREE.Material
   private _materialAlways: THREE.Material
@@ -30,6 +29,22 @@ export class CameraGizmo {
 
   constructor (renderer: Renderer) {
     this._renderer = renderer
+  }
+
+  dispose () {
+    clearTimeout(this._timeout)
+
+    this._sphere.dispose()
+    this._wireframe.dispose()
+    this._material.dispose()
+    this._materialAlways.dispose()
+    this._sphere = undefined
+    this._wireframe = undefined
+    this._material = undefined
+    this._materialAlways = undefined
+
+    this._renderer.remove(this._gizmos)
+    this._gizmos = undefined
   }
 
   show (show: boolean = true) {
@@ -53,7 +68,6 @@ export class CameraGizmo {
 
   applySettings (settings: ViewerSettings) {
     this._active = settings.getCameraShowGizmo()
-    this._fov = settings.getCameraFov()
   }
 
   setScale (scale: number = 1) {
@@ -62,8 +76,8 @@ export class CameraGizmo {
   }
 
   private createGizmo () {
-    this._box = new THREE.SphereGeometry(1)
-    this._wireframe = new THREE.WireframeGeometry(this._box)
+    this._sphere = new THREE.SphereGeometry(1)
+    this._wireframe = new THREE.WireframeGeometry(this._sphere)
 
     this._material = new THREE.LineBasicMaterial({
       depthTest: true,
@@ -87,19 +101,5 @@ export class CameraGizmo {
     this._renderer.add(this._gizmos)
 
     this.setScale(this._scale)
-  }
-
-  dispose () {
-    this._box.dispose()
-    this._wireframe.dispose()
-    this._material.dispose()
-    this._materialAlways.dispose()
-    this._box = null
-    this._wireframe = null
-    this._material = null
-    this._materialAlways = null
-
-    this._renderer.remove(this._gizmos)
-    this._gizmos = null
   }
 }

@@ -7,8 +7,8 @@ import { ViewerSettings } from './viewerSettings'
 import { Box3 } from 'three'
 
 /**
- * Manages the THREE.Mesh for the ground plane under the vims
- */
+* Manages the THREE.Mesh for the ground plane under the vims
+*/
 export class GroundPlane {
   mesh: THREE.Mesh
 
@@ -25,6 +25,16 @@ export class GroundPlane {
     this._geometry = new THREE.PlaneBufferGeometry()
     this._material = new THREE.MeshBasicMaterial({ transparent: true })
     this.mesh = new THREE.Mesh(this._geometry, this._material)
+  }
+
+  dispose () {
+    this._geometry?.dispose()
+    this._material?.dispose()
+    this._texture?.dispose()
+
+    this._geometry = undefined
+    this._material = undefined
+    this._texture = undefined
   }
 
   applyViewerSettings (settings: ViewerSettings) {
@@ -67,7 +77,7 @@ export class GroundPlane {
 
     // dispose previous texture
     this._texture?.dispose()
-    this._texture = null
+    this._texture = undefined
 
     // Bail if new texture url, is no texture
     if (!texUrl) return
@@ -83,21 +93,11 @@ export class GroundPlane {
     // Apply texture
     this._material.map = this._texture
   }
-
-  dispose () {
-    this._geometry?.dispose()
-    this._material?.dispose()
-    this._texture?.dispose()
-
-    this._geometry = null
-    this._material = null
-    this._texture = null
-  }
 }
 
 /**
- * Manages ground plane and lights that are part of the THREE.Scene to render but not part of the Vims.
- */
+* Manages ground plane and lights that are part of the THREE.Scene to render but not part of the Vims.
+*/
 export class Environment {
   skyLight: THREE.HemisphereLight
   sunLight: THREE.DirectionalLight
@@ -112,9 +112,19 @@ export class Environment {
     this.applySettings(settings)
   }
 
+  dispose () {
+    this.sunLight.dispose()
+    this.skyLight.dispose()
+    this._groundPlane.dispose()
+
+    this.sunLight = undefined
+    this.skyLight = undefined
+    this._groundPlane = undefined
+  }
+
   /**
-   * Returns all three objects composing the environment
-   */
+  * Returns all three objects composing the environment
+  */
   getObjects (): THREE.Object3D[] {
     return [this._groundPlane.mesh, this.skyLight, this.sunLight]
   }
@@ -135,9 +145,9 @@ export class Environment {
   }
 
   /**
-   * Adjust scale so that it matches box dimensions.
-   */
-  public adaptToContent (box: Box3) {
+  * Adjust scale so that it matches box dimensions.
+  */
+  adaptToContent (box: Box3) {
     // Plane
     this._groundPlane.adaptToContent(box)
   }
