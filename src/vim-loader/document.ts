@@ -1,21 +1,81 @@
-/**
- * @module vim-loader
- */
-
 import { BFast } from './bfast'
 import { G3d } from './g3d'
 
-export class Document {
+const TypeSizes = { 
+  byte: 1,
+  short: 2,
+  int : 4,
+  float : 4,
+  long : 8,
+  double : 8,
+  default: 4,
+}
+
+function getTypeSize(typeName: string): number {
+  if (typeName in TypeSizes) 
+    return TypeSizes[typeName];
+  else
+    return TypeSizes.default;
+}
+
+const ArrayConstructors = {
+  byte:  Int8Array,
+  short: Int16Array,
+  int: Int32Array,
+  float: Float32Array,
+  long: Float64Array,
+  double: Float64Array,
+  default: Uint8Array,
+}
+
+function getTypeArrayConstructor(typeName: string): any {
+  if (typeName in ArrayConstructors)
+    return ArrayConstructors[typeName];
+  else
+    throw ArrayConstructors.default;
+}
+
+export class EntityTable 
+{ 
+  columns: Map<string, EntityColumn>;  
+  constructor(bfast: BFast)
+  {
+    this.columns = new Map<string, EntityColumn>();
+    for (let i=0; i < bfast.buffers.length; ++i) {
+      const name = bfast.names[i];
+      const buffer = bfast.buffers[i];
+      this.columns.set(name, new EntityColumn(name, buffer));
+    }
+  }
+}
+
+export class EntityColumn
+{
+  name: string;
+  data: any;
+  constructor(name: string, buffer: Uint8Array)
+  {
+    this.name = name;
+    const type = name.split(':')[0];
+    const size = getTypeSize(type);    
+    const length = buffer.length / 4;
+    const ctor = getTypeArrayConstructor(type);
+    this.data = ctor(buffer.buffer, buffer.byteOffset, length);
+  }  
+}
+
+export class Document 
+{
   g3d: G3d
-  private _entity: BFast
-  private _strings: string[]
+  _entity: BFast
+  _strings: string[]
 
-  private _instanceToElement: number[]
-  private _elementToInstances: Map<number, number[]>
-  private _elementIds: number[]
-  private _elementIdToElements: Map<number, number[]>
+  _instanceToElement: number[]
+  _elementToInstances: Map<number, number[]>
+  _elementIds: number[]
+  _elementIdToElements: Map<number, number[]>
 
-  private constructor (
+  constructor (
     g3d: G3d,
     entities: BFast,
     strings: string[],
@@ -23,7 +83,8 @@ export class Document {
     elementToInstances: Map<number, number[]>,
     elementIds: number[],
     elementIdToElements: Map<number, number[]>
-  ) {
+  ) 
+  {
     this.g3d = g3d
     this._entity = entities
     this._strings = strings
@@ -33,38 +94,24 @@ export class Document {
     this._elementIdToElements = elementIdToElements
   }
 
-  /**
-   * Creates document by fetching all required data from bfast.
-   */
-  static async createFromBfast (bfast: BFast) {
-    let g3d: G3d
-    let entity: BFast
-    let strings: string[]
+  static createFromBfast (bfast: BFast) 
+  {
+    const g3d = G3d.createFromBfast(bfast.getChild('geometry'));
+    const strings = new TextDecoder('utf-8').decode(bfast.getBuffer('strings')).split('\0');
+    const entities = bfast.getChild('entities');
 
-    let instanceToElement: number[]
-    let elementIds: number[]
+    const nodes = entities.getChild('Vim.Node');
+    const instanceToElement = nodes.getBuffer('index:Vim.Element:Element');
+    
+    const elements = entities.getChild('Vim.Element');
+    const elementIds = elements.getBuffer('int:Id') ?? elements.getBuffer('numeric:Id');
 
-    await Promise.all([
-      Document.requestG3d(bfast).then((g) => (g3d = g)),
-      Document.requestStrings(bfast).then((strs) => (strings = strs)),
-      bfast
-        .getBfast('entities')
-        .then((ets) => (entity = ets))
-        .then((ets) =>
-          Promise.all([
-            Document.requestInstanceToElement(ets).then(
-              (v) => (instanceToElement = v)
-            ),
-            Document.requestElementIds(ets).then((v) => (elementIds = v))
-          ])
-        )
-    ])
+    const elementToInstance = Document.invertMap(instanceToElement)
+    const elementIdToElements = Document.invertMap(elementIds)
 
-    const elementToInstance = Document.invert(instanceToElement)
-    const elementIdToElements = Document.invert(elementIds)
     return new Document(
       g3d,
-      entity,
+      entities,
       strings,
       instanceToElement,
       elementToInstance,
@@ -73,124 +120,32 @@ export class Document {
     )
   }
 
-  private static async requestG3d (bfast: BFast) {
-    const geometry = await bfast.getBfast('geometry')
-    const g3d = await G3d.createFromBfast(geometry)
-    return g3d
-  }
-
-  private static async requestStrings (bfast: BFast) {
-    const buffer = await bfast.getBuffer('strings')
-    const strings = new TextDecoder('utf-8').decode(buffer).split('\0')
-    return strings
-  }
-
-  private static async requestInstanceToElement (entities: BFast) {
-    const nodes = await entities.getBfast('Vim.Node')
-    const instances = await nodes.getArray('index:Vim.Element:Element')
-    return instances
-  }
-
-  /**
-   * Returns a map where data[i] -> i
-   */
-  private static invert (data: number[]) {
+  static invertMap (data: number[]) : Map<number, number[]> {
     const result = new Map<number, number[]>()
     for (let i = 0; i < data.length; i++) {
-      const value = data[i]
+      const value = data[i];
       if (!result.has(value)) {
-        result.set(value, [i])
+        result.set(value, [i]);
       } else {
-        result.get(value).push(i)
+        result.get(value).push(i);
       }
     }
-    return result
+    return result;
   }
 
-  /**
-   * Request element id table from remote with support for legacy name
-   */
-  private static async requestElementIds (entities: BFast) {
-    const elements = await entities.getBfast('Vim.Element')
-    const ids =
-      (await elements.getArray('int:Id')) ??
-      (await elements.getArray('numeric:Id'))
-    return ids
+  getInstanceFromElement (elementIndex: number) {
+    return this._elementToInstances.get(elementIndex);
   }
 
-  /**
-   * Returns all element indices of the vim
-   */
-  * getAllElements () {
-    for (let i = 0; i < this._elementIds.length; i++) {
-      yield i
-    }
-  }
-
-  /**
-   * Returns instance indez associated with vim element index
-   * @param element vim element index
-   */
-  getInstanceFromElement (element: number) {
-    return this._elementToInstances.get(element)
-  }
-
-  /**
-   * Returns all fields of element at given index
-   * @param element vim element index
-   */
-  async getElement (element: number) {
-    return this.getEntity('Vim.Element', element)
-  }
-
-  /**
-   * Returns the element index associated with the g3d instance index.
-   * @param instance g3d instance index
-   * @returns element index or -1 if not found
-   */
   getElementFromInstance (instance: number) {
-    return this._instanceToElement[instance]
+    return this._instanceToElement[instance];
   }
 
-  /**
-   * Returns the element index associated with element Id.
-   * @param elementId vim element Id
-   * @returns element index or -1 if not found
-   */
   getElementFromElementId (elementId: number) {
-    return this._elementIdToElements.get(elementId)
+    return this._elementIdToElements.get(elementId);
   }
 
-  /**
-   * Returns element id from element index
-   * @param element element index
-   */
   getElementId (element: number) {
-    return this._elementIds[element]
-  }
-
-  /**
-   * Returns all fields at given indices from buffer with given name
-   * @param name buffer name
-   * @param index row index
-   */
-  async getEntity (name: string, index: number) {
-    const elements = await this._entity.getBfast(name)
-    const row = await elements.getRow(index)
-    this.resolveStrings(row)
-    return row
-  }
-
-  /**
-   * Associate all string indices with their related strings.
-   */
-  private resolveStrings (map: Map<string, number>) {
-    const result = <Map<string, string | number>>map
-    for (const key of map.keys()) {
-      if (key.startsWith('string:')) {
-        const v = map.get(key)
-        result.set(key, this._strings[v])
-      }
-    }
+    return this._elementIds[element];
   }
 }

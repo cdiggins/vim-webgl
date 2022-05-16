@@ -22,7 +22,6 @@ import { Loader } from '../vim-loader/loader'
 import { Object } from '../vim-loader/object'
 import { BFast } from '../vim-loader/bfast'
 import { Vim } from '../vim-loader/vim'
-import { IProgressLogs, RemoteBuffer } from '../vim-loader/remoteBuffer'
 import { Materials } from '../vim-loader/materials'
 
 /**
@@ -193,18 +192,11 @@ export class Viewer {
    * @param options vim options
    */
   async loadVim (
-    source: string | ArrayBuffer,
+    buffer: ArrayBuffer,
     options: VimOptions.Root,
-    onProgress?: (logger: IProgressLogs) => void
+    onProgress?: (logger) => void
   ) {
-    let buffer: RemoteBuffer | ArrayBuffer
-    if (typeof source === 'string') {
-      buffer = new RemoteBuffer(source)
-      buffer.logger.onUpdate = (log) => onProgress?.(log)
-    } else buffer = source
-
-    const bfast = new BFast(buffer, 0, 'vim')
-    if (options.forceDownload) await bfast.forceDownload()
+    const bfast = BFast.parseFromBuffer(buffer);
 
     const vim = await this._loader.load(bfast, 'all')
     this.onVimLoaded(vim, new VimSettings(options))

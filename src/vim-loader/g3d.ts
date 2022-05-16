@@ -138,20 +138,13 @@ class AbstractG3d {
     }
   }
 
-  /**
-   * Create g3d from bfast by requesting all necessary buffers individually.
-   */
   static createFromBfast (bfast: BFast) {
-    const promises = VimAttributes.all.map((a) =>
-      bfast
-        .getBytes(a)
-        .then((b) => new G3dAttribute(G3dAttributeDescriptor.fromString(a), b))
-    )
-    return Promise.all(promises).then(
-      (attributes) => new AbstractG3d('meta', attributes)
-    )
+    const attributes = VimAttributes.all.map((name) => 
+      new G3dAttribute(G3dAttributeDescriptor.fromString(name), bfast.getBuffer(name)));
+    return new AbstractG3d('meta', attributes)
   }
 }
+
 /**
  * See https://github.com/vimaec/vim#vim-geometry-attributes
  */
@@ -415,8 +408,8 @@ export class G3d {
     )
   }
 
-  static async createFromBfast (bfast: BFast) {
-    return AbstractG3d.createFromBfast(bfast).then((g3d) => new G3d(g3d))
+  static createFromBfast (bfast: BFast) {
+    return new G3d(AbstractG3d.createFromBfast(bfast));
   }
 
   validate () {
@@ -516,7 +509,7 @@ export class G3d {
 
     for (let i = 0; i < this.submeshMaterial.length; i++) {
       if (this.submeshMaterial[i] >= this.materialColors.length) {
-        throw new Error('submeshMaterial out of bound')
+        throw new Error('SubmeshMaterial out of bound')
       }
     }
 
