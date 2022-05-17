@@ -38,89 +38,86 @@ function getTypeArrayConstructor(typeName: string): any {
 export class EntityTable 
 { 
   columns: Map<string, EntityColumn>;  
+  numRows: number;
   constructor(bfast: BFast)
   {
     this.columns = new Map<string, EntityColumn>();
+    this.numRows = -1;
     for (let i=0; i < bfast.buffers.length; ++i) {
       const name = bfast.names[i];
       const buffer = bfast.buffers[i];
-      this.columns.set(name, new EntityColumn(name, buffer));
+      const column = new EntityColumn(name, buffer);
+      if (this.numRows < 0) 
+        this.numRows = column.data.length; 
+      if (this.numRows != column.data.length)
+        throw new Error("Inconsistent number of rows");
+      this.columns.set(column.name, column);
     }
+  }
+  getColumn(name: string) : EntityColumn {
+    return this.columns.get(name);
+  }
+  getColumnData(name: string) : ArrayLike<any> {
+    return this.getColumn(name).data;
+  }
+  getRows(n: number): any {
+    let r = {};
+    for (let colName in this.columns) {
+      const col = this.columns[colName];
+      r[colName] = col.getColumnData(colName)[n];
+    }
+    return r;  
   }
 }
 
 export class EntityColumn
 {
   name: string;
-  data: any;
+  type: string;
+  typeSize: number;
+  data: ArrayLike<any>;
   constructor(name: string, buffer: Uint8Array)
   {
-    this.name = name;
-    const type = name.split(':')[0];
-    const size = getTypeSize(type);    
-    const length = buffer.length / 4;
-    const ctor = getTypeArrayConstructor(type);
+    const split = name.indexOf(':');     
+    this.type = name.slice(0, split);    
+    this.name = name.slice(split + 1);
+    this.typeSize = getTypeSize(this.type);    
+    const length = buffer.length / this.typeSize;
+    const ctor = getTypeArrayConstructor(this.type);
     this.data = ctor(buffer.buffer, buffer.byteOffset, length);
   }  
 }
 
 export class Document 
 {
-  g3d: G3d
-  _entity: BFast
-  _strings: string[]
+  bfast: BFast;
+  g3d: G3d;
+  entities: BFast;
+  tables: Map<string, EntityTable>;
+  strings: string[];
+  instanceToElement: ArrayLike<number>;
+  elementIds: ArrayLike<number>;
+  elementToInstances: Map<number, number[]>;
+  elementIdToElements: Map<number, number[]>;
 
-  _instanceToElement: number[]
-  _elementToInstances: Map<number, number[]>
-  _elementIds: number[]
-  _elementIdToElements: Map<number, number[]>
-
-  constructor (
-    g3d: G3d,
-    entities: BFast,
-    strings: string[],
-    instanceToElement: number[],
-    elementToInstances: Map<number, number[]>,
-    elementIds: number[],
-    elementIdToElements: Map<number, number[]>
-  ) 
+  constructor (bfast: BFast) 
   {
-    this.g3d = g3d
-    this._entity = entities
-    this._strings = strings
-    this._instanceToElement = instanceToElement
-    this._elementToInstances = elementToInstances
-    this._elementIds = elementIds
-    this._elementIdToElements = elementIdToElements
+    this.g3d = G3d.createFromBfast(bfast.getChild('geometry'));
+    this.strings = new TextDecoder('utf-8').decode(bfast.getBuffer('strings')).split('\0');
+    this.entities = bfast.getChild('entities');
+    this.tables = new Map<string, EntityTable>();
+    for (const k in this.entities.children) {
+      const child = this.entities.children[k];
+      this.tables.set(k, new EntityTable(child));
+    }
+
+    this.instanceToElement = this.getColumnData('Vim.Node', 'Vim.Element:Element');    
+    this.elementIds = this.getColumnData('Vim.Element', 'Id');
+    this.elementToInstances = Document.invertMap(this.instanceToElement)
+    this.elementIdToElements = Document.invertMap(this.elementIds)
   }
 
-  static createFromBfast (bfast: BFast) 
-  {
-    const g3d = G3d.createFromBfast(bfast.getChild('geometry'));
-    const strings = new TextDecoder('utf-8').decode(bfast.getBuffer('strings')).split('\0');
-    const entities = bfast.getChild('entities');
-
-    const nodes = entities.getChild('Vim.Node');
-    const instanceToElement = nodes.getBuffer('index:Vim.Element:Element');
-    
-    const elements = entities.getChild('Vim.Element');
-    const elementIds = elements.getBuffer('int:Id') ?? elements.getBuffer('numeric:Id');
-
-    const elementToInstance = Document.invertMap(instanceToElement)
-    const elementIdToElements = Document.invertMap(elementIds)
-
-    return new Document(
-      g3d,
-      entities,
-      strings,
-      instanceToElement,
-      elementToInstance,
-      elementIds,
-      elementIdToElements
-    )
-  }
-
-  static invertMap (data: number[]) : Map<number, number[]> {
+  static invertMap (data: ArrayLike<number>) : Map<number, number[]> {
     const result = new Map<number, number[]>()
     for (let i = 0; i < data.length; i++) {
       const value = data[i];
@@ -133,19 +130,27 @@ export class Document
     return result;
   }
 
+  getTable(name : string): EntityTable {
+    return this.tables.get(name);
+  }
+
+  getColumnData(tableName: string, columnName: string) {
+    return this.getTable(tableName).getColumnData(columnName);
+  }
+
   getInstanceFromElement (elementIndex: number) {
-    return this._elementToInstances.get(elementIndex);
+    return this.elementToInstances.get(elementIndex);
   }
 
   getElementFromInstance (instance: number) {
-    return this._instanceToElement[instance];
+    return this.instanceToElement[instance];
   }
 
   getElementFromElementId (elementId: number) {
-    return this._elementIdToElements.get(elementId);
+    return this.elementIdToElements.get(elementId);
   }
 
   getElementId (element: number) {
-    return this._elementIds[element];
+    return this.elementIds[element];
   }
 }
