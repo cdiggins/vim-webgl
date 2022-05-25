@@ -24,8 +24,6 @@ const viewer = new VIM.Viewer({
   }
 })
 
-load2(url)
-
 const input = document.createElement('input')
 input.type = 'file'
 document.body.prepend(input)
@@ -42,28 +40,48 @@ input.onchange = (e: any) => {
   // here we tell the reader what to do when it's done reading...
   reader.onload = (readerEvent) => {
     const content = readerEvent.target.result // this is the content!
-    load2(content)
+    loadFromBuffer(content as ArrayBuffer)
   }
 }
 
-function load2 (vim: string | ArrayBuffer) {
-  const COUNT = 1
-  for (let i = 0; i < COUNT; i++) {
-    for (let j = 0; j < COUNT; j++) {
-      viewer.loadVim(
-        vim,
-        {
-          rotation: { x: 270, y: 0, z: 0 },
-          transparency: transparency
-        },
-        (progress) => {
-          console.log(`Loading : ${progress.loaded} / ${progress.total}`)
-        }
-      )
-    }
+function loadFromUrl(url: string) 
+{
+  console.log("Loading from: " + url);
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', url)
+  xhr.responseType = 'arraybuffer'
+
+  xhr.onprogress = (prog) => {
+    console.log("OnProgress");
+    console.log(prog);
   }
+  
+  xhr.onload = () => {
+    console.log("Loaded");
+    loadFromBuffer(xhr.response);
+  }
+  
+  xhr.onerror = (err) => {
+    console.log("Error")
+    console.log(err);
+  }
+}
+
+function loadFromBuffer (vim: ArrayBuffer) {
+    viewer.loadVim(
+      vim,
+      {
+        rotation: { x: 270, y: 0, z: 0 },
+        transparency: transparency
+      },
+      (progress) => {
+        console.log(`Loading : ${progress.loaded} / ${progress.total}`)
+      }
+    )
 }
 
 globalThis.viewer = viewer
 globalThis.VIM = VIM
 globalThis.THREE = THREE
+
+loadFromUrl(url);

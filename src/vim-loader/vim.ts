@@ -70,7 +70,7 @@ export class Vim {
    */
   getObjectFromMesh (mesh: THREE.Mesh, index: number) {
     const element = this.getElementFromMesh(mesh, index)
-    return this.getObjectFromElement(element)
+    return this.getObjectFromElementIndex(element)
   }
 
   /**
@@ -79,7 +79,7 @@ export class Vim {
    */
   getObjectFromInstance (instance: number) {
     const element = this.document.getElementFromInstance(instance)
-    return this.getObjectFromElement(element)
+    return this.getObjectFromElementIndex(element)
   }
 
   /**
@@ -88,14 +88,14 @@ export class Vim {
    */
   getObjectsFromElementId (id: number) {
     const elements = this.document.getElementFromElementId(id)
-    return elements?.map((e) => this.getObjectFromElement(e))
+    return elements?.map((e) => this.getObjectFromElementIndex(e))
   }
 
   /**
    * Returns vim object from given vim element index
    * @param element vim element index
    */
-  getObjectFromElement (element: number) {
+  getObjectFromElementIndex (element: number) {
     if (element === undefined) return
 
     if (this._elementToObject.has(element)) {
@@ -108,15 +108,6 @@ export class Vim {
     const result = new Object(this, element, instances, meshes)
     this._elementToObject.set(element, result)
     return result
-  }
-
-  /**
-   * Enumerates all objects of the vim
-   */
-  * getAllObjects () {
-    for (const e of this.document.getAllElements()) {
-      yield this.getObjectFromElement(e)
-    }
   }
 
   private getMeshesFromElement (index: number) {

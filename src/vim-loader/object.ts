@@ -59,7 +59,7 @@ export class Object {
    * Returns Bim data for the element associated with this object.
    */
   getBimElement () {
-    return this.vim.document.getElement(this.element)
+    return this.vim.document.getElementData(this.element)
   }
 
   get elementId () {

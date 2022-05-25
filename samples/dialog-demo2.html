@@ -60,9 +60,9 @@
 
       let transparency = 'all'
       if (params.has('transparency')) {
-        const t = params.get('transparency')
-        transparency = geometry.transparencyIsValid(t) ? t : 'all'
-      }
+        const t = params.get('transparency');
+        transparency = geometry.transparencyIsValid(t) ? t : 'all';
+      };
 
       // Create Viewer
       const viewer = new VIM.Viewer({

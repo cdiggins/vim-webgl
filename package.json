@@ -24,6 +24,7 @@
     "bump-dev": "npm version prerelease --preid=dev",
     "publish-dev": "npm publish --tag=dev",
     "serve-docs": "http-server ./docs -o --host",
+    "serve-root": "http-server . -o --host",
     "release-patch": "npm version patch && git push && npm publish",
     "release-dev": "npm run build && npm run bump-dev && git push && npm run publish-dev",
     "eslint": "eslint --ext .js,.ts src --fix",

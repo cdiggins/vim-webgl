@@ -191,14 +191,13 @@ export class Viewer {
    * @param source if string downloads the vim from url then loads it, if ArrayBuffer directly loads the vim
    * @param options vim options
    */
-  async loadVim (
+  loadVim (
     buffer: ArrayBuffer,
     options: VimOptions.Root,
     onProgress?: (logger) => void
   ) {
     const bfast = BFast.parseFromBuffer(buffer);
-
-    const vim = await this._loader.load(bfast, 'all')
+    const vim = this._loader.load(bfast, 'all');
     this.onVimLoaded(vim, new VimSettings(options))
     this.camera.frame('all', true)
     return vim
@@ -260,10 +259,6 @@ export class Viewer {
     if (hit.doubleClick) this._camera.frame(hit.object)
 
     const element = hit.object.getBimElement()
-    if (element instanceof Map) {
-      console.log(element)
-    } else {
-      element.then((e) => console.log(e))
-    }
+    console.log(element)
   }
 }

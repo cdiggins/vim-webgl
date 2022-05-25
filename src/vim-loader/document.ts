@@ -8,6 +8,9 @@ const TypeSizes = {
   float : 4,
   long : 8,
   double : 8,
+  string : 4,
+  index : 4,
+  numeric : 8,
   default: 4,
 }
 
@@ -25,6 +28,9 @@ const ArrayConstructors = {
   float: Float32Array,
   long: Float64Array,
   double: Float64Array,
+  string: Int32Array,
+  index: Int32Array,
+  numeric: Float64Array,
   default: Uint8Array,
 }
 
@@ -32,15 +38,30 @@ function getTypeArrayConstructor(typeName: string): any {
   if (typeName in ArrayConstructors)
     return ArrayConstructors[typeName];
   else
-    throw ArrayConstructors.default;
+    return ArrayConstructors.default;
+}
+
+function invertMap (data: ArrayLike<number>) : Map<number, number[]> {
+  const result = new Map<number, number[]>()
+  for (let i = 0; i < data.length; i++) {
+    const value = data[i];
+    if (!result.has(value)) {
+      result.set(value, [i]);
+    } else {
+      result.get(value).push(i);
+    }
+  }
+  return result;
 }
 
 export class EntityTable 
 { 
+  name: string;
   columns: Map<string, EntityColumn>;  
   numRows: number;
-  constructor(bfast: BFast)
+  constructor(bfast: BFast, name: string)
   {
+    this.name = name;
     this.columns = new Map<string, EntityColumn>();
     this.numRows = -1;
     for (let i=0; i < bfast.buffers.length; ++i) {
@@ -60,7 +81,7 @@ export class EntityTable
   getColumnData(name: string) : ArrayLike<any> {
     return this.getColumn(name).data;
   }
-  getRows(n: number): any {
+  getRowData(n: number): any {
     let r = {};
     for (let colName in this.columns) {
       const col = this.columns[colName];
@@ -84,7 +105,7 @@ export class EntityColumn
     this.typeSize = getTypeSize(this.type);    
     const length = buffer.length / this.typeSize;
     const ctor = getTypeArrayConstructor(this.type);
-    this.data = ctor(buffer.buffer, buffer.byteOffset, length);
+    this.data = new ctor(buffer.buffer, buffer.byteOffset, length);
   }  
 }
 
@@ -106,28 +127,15 @@ export class Document
     this.strings = new TextDecoder('utf-8').decode(bfast.getBuffer('strings')).split('\0');
     this.entities = bfast.getChild('entities');
     this.tables = new Map<string, EntityTable>();
-    for (const k in this.entities.children) {
-      const child = this.entities.children[k];
-      this.tables.set(k, new EntityTable(child));
+    for (const [k, child] of this.entities.children.entries()) {
+      const table = new EntityTable(child, k);
+      this.tables.set(table.name, table);
     }
 
     this.instanceToElement = this.getColumnData('Vim.Node', 'Vim.Element:Element');    
     this.elementIds = this.getColumnData('Vim.Element', 'Id');
-    this.elementToInstances = Document.invertMap(this.instanceToElement)
-    this.elementIdToElements = Document.invertMap(this.elementIds)
-  }
-
-  static invertMap (data: ArrayLike<number>) : Map<number, number[]> {
-    const result = new Map<number, number[]>()
-    for (let i = 0; i < data.length; i++) {
-      const value = data[i];
-      if (!result.has(value)) {
-        result.set(value, [i]);
-      } else {
-        result.get(value).push(i);
-      }
-    }
-    return result;
+    this.elementToInstances = invertMap(this.instanceToElement)
+    this.elementIdToElements = invertMap(this.elementIds)
   }
 
   getTable(name : string): EntityTable {
@@ -136,6 +144,10 @@ export class Document
 
   getColumnData(tableName: string, columnName: string) {
     return this.getTable(tableName).getColumnData(columnName);
+  }
+
+  getRowData(tableName: string, row: number) {
+    return this.getTable(tableName).getRowData(row);
   }
 
   getInstanceFromElement (elementIndex: number) {
@@ -152,5 +164,9 @@ export class Document
 
   getElementId (element: number) {
     return this.elementIds[element];
+  }
+
+  getElementData(element: number) {
+    return this.getRowData('Vim.Element', element);
   }
 }

@@ -73,7 +73,7 @@ export class BFast {
 
   static isBfast(bytes: Uint8Array): boolean {
     const header = BFastHeader.fromBytes(bytes, bytes.length);
-    return header.isValid;
+    return header && header.isValid;
   }
 
   static parseFromArray (bytes: Uint8Array): BFast {
@@ -149,7 +149,7 @@ export class BFast {
 
     for (var i=0; i < names.length; ++i)
     {
-      var buffer = buffers[i];
+      var buffer = slices[i];
       if (this.isBfast(buffer))      
       {
         var bfast = BFast.parseFromArray(buffer);
