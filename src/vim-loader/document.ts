@@ -83,9 +83,8 @@ export class EntityTable
   }
   getRowData(n: number): any {
     let r = {};
-    for (let colName in this.columns) {
-      const col = this.columns[colName];
-      r[colName] = col.getColumnData(colName)[n];
+    for (let [name, col] of this.columns) {
+      r[name] = col.data[n];
     }
     return r;  
   }

@@ -6,7 +6,10 @@
 -->
 <html>
   <head>
+    <link rel="stylesheet" ="https://fonts.googleapis.com/css?family=Roboto">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css">
     <style>
+      
       /*Makes full screen and remove scrollbars*/
       html,
       body {
@@ -15,6 +18,13 @@
         padding: 0;
         overflow: hidden;
         background: radial-gradient(circle at center, #d8d8e6, #8a8a8a);
+      }
+      html, 
+      .ui-widget,
+      table
+      {
+        font-family: 'Roboto', sans-serif;
+        font-size: 12px;
       }
       #progress {
         width: fit-content;
@@ -31,14 +41,13 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-      }        
+      }           
     </style>
     <title>VIM 3D Model Viewer</title>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css">
     <script src="https://unpkg.com/three@0.133.1/build/three.min.js"></script> 
     <script src="../dist/vim-webgl-viewer.iife.js"></script>
     <!-- <script src="https://unpkg.com/vim-webgl-viewer@1.2.7"></script> -->
@@ -50,23 +59,11 @@
 </head>
   <body>
     <script>
-        function parameterRowDiv(name, value) {
-          return `<div class="parameter-row"><div class="parameter-name">${name}</div><div class="parameter-value">${value}</div></div>`
-        }
-
-        function onClick(viewer, hit) {
-        $( function() {
-          $( "#dialog" ).dialog();
-        } );          
-        console.log(hit)
-          let entity = viewer.vimScene.vim.getEntity('Vim.Element', hit.elementIndex)
-          viewer.selectByElementIndex(hit.elementIndex)
-          html = ''
-          for (const k in entity) {
-            html += parameterRowDiv(k, entity[k])
-          }
-          $( "#parameter-table" ).html(html)
-        }
+      function parameterRowDiv(name, value) {
+        const pos = name.indexOf(":");
+        if (pos > 0) name = name.substring(pos);
+        return `<tr><td>${name}</td><td>${value}</td></tr>`
+      }        
 
       // Parse URL
       const params = new URLSearchParams(window.location.search)
@@ -92,9 +89,6 @@
           size: 5,
         },
       })
-
-
-      viewer.onClick = onClick;
 
     function updateProgress(show, amount) {      
       if (!show) {
@@ -160,6 +154,80 @@
         loadFromBuffer(readerEvent.target.result)
       }
     }
+
+    const defaultClick = viewer.onMouseClick.bind(viewer);
+    
+    function updateParameterDialog(hit)
+    {
+      const vim = viewer.vims[0];
+      if (!vim || !hit || !hit.object) 
+      {
+        return; 
+      }
+      const elementIndex = hit.object.element;
+      const entity = vim.document.getRowData('Vim.Element', elementIndex);
+
+      html = '<table><th>Name</th><th>Value</th>'
+      for (const k in entity) {
+        html += parameterRowDiv(k, entity[k])
+      }
+      html += "</table>"
+      $( "#parameter-table" ).html(html)
+    }
+
+    function updateSelection(hit) 
+    {
+      const vim = viewer.vims[0];
+      if (!vim || !hit) {
+        viewer.selection.select(null);
+        return; 
+      }
+      viewer.selection.select(hit.object);
+    }
+
+    function onClick(hit) 
+    {
+      updateSelection(hit);
+
+      // Open the dialog if we hit something
+      if (hit && hit.object) {
+        $( function() {
+          $( "#dialog" ).dialog();
+        } ); 
+      }
+
+      updateParameterDialog(hit);
+    }
+
+    viewer.onMouseClick = onClick;
+
+    function debounce(callback, wait) {
+        var timeout;
+        return function(e) {
+          clearTimeout(timeout);
+
+          timeout = setTimeout(() => {
+            callback(e);
+          }, wait);
+        }
+      }
+
+      function throttle(callback, wait) {
+        var timeout
+        return function(e) {
+          if (timeout) return;
+          timeout = setTimeout(() => (callback(e), timeout=undefined), wait)
+        }
+      }
+
+
+    function mouseMove(event) {
+        const pos = new THREE.Vector2(event.offsetX, event.offsetY);
+        const result = viewer.inputs._mouse._raycaster.screenRaycast(pos);        
+        updateParameterDialog(result);
+      }
+
+    viewer.viewport.canvas.addEventListener('mousemove', throttle(mouseMove, 200));
 
     // load default model
     loadFromUrl(url)
